@@ -71,12 +71,11 @@ function getExclusionLabel(desc, amount) {
 // ============================================================
 // SPLITTING
 // ============================================================
-function splitAmount(amount) {
+function splitTotal(total) {
   const n = CONFIG.roommates.length;
-  const share = Math.floor((amount / n) * 100) / 100;  // floor to cent
-  const remainder = parseFloat((amount - share * n).toFixed(2));
+  const share = Math.floor((total / n) * 100) / 100;
+  const remainder = parseFloat((total - share * n).toFixed(2));
 
-  // First person (you) absorbs any rounding remainder
   return CONFIG.roommates.map((name, i) => ({
     name,
     share: i === 0 ? parseFloat((share + remainder).toFixed(2)) : share,
@@ -98,25 +97,13 @@ function groupByMonth(entries) {
     const excludeLabel = getExclusionLabel(desc, amount);
 
     if (!months[monthKey]) {
-      months[monthKey] = {
-        label: monthLabel,
-        items: [],
-        total: 0,
-        splits: Object.fromEntries(CONFIG.roommates.map(n => [n, 0])),
-      };
+      months[monthKey] = { label: monthLabel, items: [], total: 0 };
     }
 
-    const splits = excludeLabel ? null : splitAmount(amount);
-
-    months[monthKey].items.push({ desc, amount, excludeLabel, splits });
+    months[monthKey].items.push({ desc, amount, excludeLabel });
 
     if (!excludeLabel) {
       months[monthKey].total += amount;
-      for (const { name, share } of splits) {
-        months[monthKey].splits[name] = parseFloat(
-          (months[monthKey].splits[name] + share).toFixed(2)
-        );
-      }
     }
   }
 
@@ -132,25 +119,24 @@ function formatRow(desc, amount, tag) {
   return `  ${desc.padEnd(50)} $${amount.toFixed(2)}${tagStr}`;
 }
 
-function printMonth(monthKey, { label, items, total, splits }) {
+function printMonth(monthKey, { label, items, total }) {
   console.group(`📅 ${label}`);
 
-  for (const { desc, amount, excludeLabel, splits: itemSplits } of items) {
+  for (const { desc, amount, excludeLabel } of items) {
     console.log(formatRow(desc, amount, excludeLabel ? `excluded - ${excludeLabel}` : null));
-    if (itemSplits) {
-      for (const { name, share } of itemSplits) {
-        console.log(`    ↳ ${name.padEnd(20)} $${share.toFixed(2)}`);
-      }
-    }
   }
 
   console.log('');
   console.log(`${'TOTAL'.padEnd(52)} $${total.toFixed(2)}`);
-  console.group('Split summary');
-  for (const [name, share] of Object.entries(splits)) {
-    console.log(`  ${name.padEnd(50)} $${share.toFixed(2)}`);
+
+  if (CONFIG.roommates.length > 1) {
+    console.group('Split');
+    for (const { name, share } of splitTotal(total)) {
+      console.log(`  ${name.padEnd(50)} $${share.toFixed(2)}`);
+    }
+    console.groupEnd();
   }
-  console.groupEnd();
+
   console.groupEnd();
 }
 
