@@ -2,17 +2,10 @@
 // CONFIGURATION — edit this to customize behavior
 // ============================================================
 const CONFIG = {
-  // CSS selector for the container holding all entries
   containerSelector: '.accountHistoryMobileView',
-
-  // Number of entries to skip at the top of the list
   skipFirstN: 2,
-
-  // Names of people splitting shared utilities (including yourself)
   roommates: ['Me', 'Roommate 1'],
 
-  // Entries matching these patterns will be shown but excluded from totals
-  // Each rule has a label (shown in output) and a match(desc, amount) function
   exclusionRules: [
     {
       label: 'rent',
@@ -21,6 +14,10 @@ const CONFIG = {
     {
       label: 'parking',
       match: (desc, amount) => /\b(307|180)\b/.test(desc),
+    },
+    {
+      label: 'payment',
+      match: (desc, amount) => amount < 0,
     },
   ],
 };
@@ -107,6 +104,10 @@ function groupByMonth(entries) {
     }
   }
 
+  for (const m of Object.values(months)) {
+    m.total = parseFloat(m.total.toFixed(2));
+  }
+
   return months;
 }
 
@@ -121,23 +122,28 @@ function formatRow(desc, amount, tag) {
 
 function printMonth(monthKey, { label, items, total }) {
   console.group(`📅 ${label}`);
-
   for (const { desc, amount, excludeLabel } of items) {
     console.log(formatRow(desc, amount, excludeLabel ? `excluded - ${excludeLabel}` : null));
   }
-
   console.log('');
   console.log(`${'TOTAL'.padEnd(52)} $${total.toFixed(2)}`);
-
-  if (CONFIG.roommates.length > 1) {
-    console.group('Split');
-    for (const { name, share } of splitTotal(total)) {
-      console.log(`  ${name.padEnd(50)} $${share.toFixed(2)}`);
-    }
-    console.groupEnd();
-  }
-
   console.groupEnd();
+}
+
+function printSummaryTable(months) {
+  const sorted = Object.entries(months).sort(([a], [b]) => a.localeCompare(b));
+
+  const rows = sorted.map(([, { label, total }]) => {
+    const splits = splitTotal(total);
+    const row = { Month: label, Total: `$${total.toFixed(2)}` };
+    for (const { name, share } of splits) {
+      row[name] = `$${share.toFixed(2)}`;
+    }
+    return row;
+  });
+
+  console.log('\n📊 Summary');
+  console.table(rows);
 }
 
 function printResults(months) {
@@ -151,6 +157,8 @@ function printResults(months) {
   for (const [key, data] of sorted) {
     printMonth(key, data);
   }
+
+  printSummaryTable(months);
 }
 
 
