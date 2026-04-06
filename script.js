@@ -20,7 +20,7 @@ const CONFIG = {
     },
     {
       label: 'parking',
-      match: (desc, amount) => /\b(307|180)\b/.test(desc) && amount === 175.00,
+      match: (desc, amount) => /\b(307|180)\b/.test(desc),
     },
   ],
 };
